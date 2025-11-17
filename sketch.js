@@ -1,16 +1,9 @@
 // ========================
 // 800x800 Canvas – CircleArt Version
+// Individual Perlin Noise animation – Xingyuan
 // ========================
-let cnv, t = 0;  
-
-const NOISE = {
-  animate: true,
-  speed: 0.02,
-  wiggle: 24,
-  sMin: 0.85,
-  sMax: 1.15,
-  rotMax: 18
-};
+let cnv;
+let t = 0; // INDIVIDUAL: global time parameter used to drive Perlin noise animation
 
 /**
  * Initialize the canvas and set up the drawing environment
@@ -18,6 +11,8 @@ const NOISE = {
 function setup() {
   cnv = createCanvas(800, 800);
   centerCanvas();
+  // noLoop();               // GROUP VERSION: static image
+  // INDIVIDUAL: remove noLoop() so draw() runs continuously
   angleMode(DEGREES);
 }
 
@@ -40,83 +35,64 @@ function windowResized() {
 }
 
 /**
- * Main draw loop - clear the canvas and draw all elements
+ * INDIVIDUAL helper:
+ * Generate a small symmetric offset using Perlin noise.
+ * seed:    any number (usually index-based)
+ * amp:     maximum offset (in pixels or degrees)
+ * tGlobal: global time parameter
  */
-function draw() {
-  if (NOISE.animate) t += NOISE.speed;
-  drawBackgroundGrid();  // Draw colored quadrants with random dots
-  drawAllCircles(t);      // Draw all circles using t as the parameter
+function noiseWiggle(seed, amp, tGlobal) {
+  return map(noise(seed, tGlobal), 0, 1, -amp, amp);
 }
 
 /**
- * CircleArt class — each circle composition becomes a "creature"
- * that subtly moves, rotates and scales according to Perlin Noise.
- *
- * This version replaces the original static display() method.
- * Noise-driven animation makes each circle feel organic and
- * visually distinct from the group’s static base image.
+ * Main draw loop - clear the canvas and draw all elements
+ * INDIVIDUAL: t increases every frame so Perlin noise values change smoothly.
+ */
+function draw() {
+  clear();
+  drawBackgroundGrid();  // Draw colored quadrants with random dots
+  drawAllCircles();      // Draw all circle compositions
+  t += 0.08;             // INDIVIDUAL: faster time step – stronger Perlin motion
+}
+
+/**
+ * CircleArt class - represents a scalable, translatable circle composition
+ * Each instance stores position, scale, and a custom drawing function
  */
 class CircleArt {
-
   constructor(x, y, scale, drawFn) {
-    // Initial static properties
-    this.x = x;              // Original X position on canvas
-    this.y = y;              // Original Y position on canvas
-    this.scale = scale;      // Base scale multiplier
-    this.drawFn = drawFn;    // Custom drawing function for this circle
-
-    // Noise seeds — each circle receives unique noise offsets
-    // These ensure circles never move in the same pattern
-    this.nx = random(1000);  // Noise seed for X-offset
-    this.ny = random(1000);  // Noise seed for Y-offset
-    this.ns = random(1000);  // Noise seed for scaling (breathing effect)
-    this.nr = random(1000);  // Noise seed for rotation
+    this.x = x;           // X position on canvas
+    this.y = y;           // Y position on canvas
+    this.scale = scale;   // Scale multiplier
+    this.drawFn = drawFn; // Drawing function for this circle
   }
 
-  /**
-   * Display the circle using noise-driven transformations.
-   * tt = time variable passed from the main draw() loop.
-   */
-  display(tt) {
+/**
+ * Display the circle at its position with its scale
+ * INDIVIDUAL: whole circle now wobbles/“breathes” using Perlin noise
+ */
+display() {
+  push();
+  translate(this.x, this.y);
 
-    // --- 1. Noise-driven position offset (subtle drifting motion)
-    const dx = map(
-      noise(this.nx + tt), 0, 1,
-      -NOISE.wiggle, NOISE.wiggle
-    );
-    const dy = map(
-      noise(this.ny + tt), 0, 1,
-      -NOISE.wiggle, NOISE.wiggle
-    );
+  // INDIVIDUAL: Perlin-driven overall wobble (rotation + breathing scale)
+  const wobbleSeed = this.x * 0.01 + this.y * 0.01;
+  const angleWobble = noiseWiggle(wobbleSeed, 10, t);      // ±10 degrees
+  const scaleWobble = 1 + noiseWiggle(wobbleSeed + 2000, 0.08, t); // ±8% scale
 
-    // --- 2. Noise-driven scaling ("breathing")
-    const sc = this.scale * map(
-      noise(this.ns + tt), 0, 1,
-      NOISE.sMin, NOISE.sMax
-    );
+  rotate(angleWobble);
+  scale(this.scale * scaleWobble);
 
-    // --- 3. Noise-driven micro-rotation
-    const ang = map(
-      noise(this.nr + tt), 0, 1,
-      -NOISE.rotMax, NOISE.rotMax
-    );
-
-    // --- Apply all transformations ---
-    push();
-    translate(this.x + dx, this.y + dy);
-    rotate(ang);
-    scale(sc);
-
-    // Draw the circle's custom graphic
-    this.drawFn(tt);
-
-    pop();
-  }
+  this.drawFn();
+  pop();
+}
 }
 
 /**
  * Draw the background grid with four colored quadrants
  * Each quadrant contains randomly distributed black circles
+ * (Unchanged from group version – background stays static.)
  */
 function drawBackgroundGrid() {
   const cols = ['#d14a2a', '#4c95e0', '#558f48', '#de7b2e'];
@@ -164,6 +140,7 @@ function drawBackgroundGrid() {
 /**
  * Create and display all circle compositions
  * Each circle is positioned at specific coordinates with a unique drawing function
+ * (Layout is identical to the group version.)
  */
 function drawAllCircles() {
   const circles = [
@@ -191,6 +168,8 @@ function drawAllCircles() {
 
 /**
  * ==================== CIRCLE #1: Purple Xingyuan ====================
+ * INDIVIDUAL: Animate the ring of purple dots with Perlin noise
+ * so they gently shift in angle and radius over time.
  */
 function drawCircle1() {
   const R = 100;
@@ -209,23 +188,33 @@ function drawCircle1() {
   fill(colors.black);
   circle(0, 0, R * 2);
 
-  // Purple dots arranged in a circle
+  // Purple dots arranged in a circle (animated with Perlin noise)
   const dotCount = 20;
   const dotRadius = R * 0.10;
   const padding = R * 0.05;
-  const dotCircleRadius = R - dotRadius - padding;
+  const baseCircleRadius = R - dotRadius - padding;
   
   fill(colors.purple);
   for (let i = 0; i < dotCount; i++) {
-    const angle = i * (360 / dotCount);
-    circle(cos(angle) * dotCircleRadius, sin(angle) * dotCircleRadius, dotRadius * 2);
+    const baseAngle = i * (360 / dotCount);
+
+    // INDIVIDUAL: stronger Perlin offsets for the dot ring
+    const angleOffset = noiseWiggle(100 + i, 10, t);           // degrees
+    const radiusOffset = noiseWiggle(200 + i, R * 0.06, t);   // pixels
+
+    const angle = baseAngle + angleOffset;
+    const radius = baseCircleRadius + radiusOffset;
+
+    const x = cos(angle) * radius;
+    const y = sin(angle) * radius;
+    circle(x, y, dotRadius * 2);
   }
 
-  // Blue center circle
+  // Blue center circle (static)
   fill(colors.blue);
   circle(0, 0, R * 1.40);
   
-  // Decorative rings
+  // Decorative rings (static)
   noFill();
   stroke(colors.pink);
   strokeWeight(R * 0.035);
@@ -242,6 +231,8 @@ function drawCircle1() {
 
 /**
  * ==================== CIRCLE #2: Orange-Green Xingyuan ====================
+ * INDIVIDUAL: Animate the white spokes – their length and angle
+ * are slightly modulated by Perlin noise to create a breathing effect.
  */
 function drawCircle2() {
   const R = 100;
@@ -259,7 +250,7 @@ function drawCircle2() {
   fill(colors.black);
   circle(0, 0, R * 2);
 
-  // Concentric orange and green circles
+  // Concentric orange and green circles (static)
   const radii = [
     { size: R * 0.82, color: colors.orange },
     { size: R * 0.56, color: colors.green },
@@ -272,7 +263,7 @@ function drawCircle2() {
     circle(0, 0, layer.size * 2);
   }
 
-  // White radial spokes
+  // White radial spokes (animated)
   const spokeCount = 24;
   const spokeWidth = R * 0.06;
   const innerRadius = R * 0.40;
@@ -281,10 +272,18 @@ function drawCircle2() {
   fill(colors.white);
   rectMode(CENTER);
   for (let i = 0; i < spokeCount; i++) {
-    push();
-    rotate(i * (360 / spokeCount));
-    const spokeLength = outerRadius - innerRadius;
+    const baseAngle = i * (360 / spokeCount);
+
+    // INDIVIDUAL: each spoke gets its own noise-based angle & length offset
+    const angleOffset = noiseWiggle(300 + i, 15, t);
+    const lengthOffset = noiseWiggle(400 + i, 16, t);
+
+    const angle = baseAngle + angleOffset;
+    const spokeLength = (outerRadius - innerRadius) + lengthOffset;
     const spokeCenter = (outerRadius + innerRadius) / 2;
+
+    push();
+    rotate(angle);
     rect(spokeCenter, 0, spokeLength, spokeWidth);
     pop();
   }
@@ -292,11 +291,12 @@ function drawCircle2() {
 
 /**
  * ==================== CIRCLE #3: Flower - Sansan ====================
+ * INDIVIDUAL: Animate the orange petals so they softly sway.
  */
 function drawCircle3() {
   noStroke();
   
-  // Outer black circle
+  // Outer black circle (static)
   fill(0);
   circle(0, 0, 300);
 
@@ -310,16 +310,20 @@ function drawCircle3() {
   strokeWeight(20);
   circle(0, 0, 200);
 
-  // Orange petals (8 petals arranged radially)
+  // Orange petals (8 petals arranged radially, animated)
   noStroke();
   fill(230, 150, 40);
   const petalLength = 120;
   const petalWidth = 50;
   
   for (let i = 0; i < 8; i++) {
+    const baseAngle = i * 45;
+    const angleOffset = noiseWiggle(500 + i, 20, t);
+    const lengthOffset = noiseWiggle(600 + i, 30, t);
+
     push();
-    rotate(i * 45);
-    ellipse(0, -90, petalWidth, petalLength);
+    rotate(baseAngle + angleOffset);
+    ellipse(0, -90, petalWidth, petalLength + lengthOffset);
     pop();
   }
 
@@ -331,6 +335,7 @@ function drawCircle3() {
 
 /**
  * ==================== CIRCLE #4: Blue-Red Layers - Sansan ====================
+ * INDIVIDUAL: Yellow dots on the ring move slightly in and out.
  */
 function drawCircle4() {
   noStroke();
@@ -342,7 +347,7 @@ function drawCircle4() {
   const blueInner = 130;
   const redCenter = 70;
 
-  // Draw concentric circles
+  // Draw concentric circles (static)
   fill(0);
   ellipse(0, 0, outerBlack, outerBlack);
   
@@ -358,20 +363,22 @@ function drawCircle4() {
   fill(220, 60, 50);
   ellipse(0, 0, redCenter, redCenter);
 
-  // Draw yellow dots arranged in a circle
+  // Yellow dots arranged in a circle (animated radially)
   fill(230, 175, 55);
   const dotCount = 12;
   const dotSize = 26;
   const outerRadius = outerBlack / 2;
   const blueRadius = blueD / 2;
-  const dotRadius = dotSize / 2;
-  const centerRadius = (blueRadius + dotRadius + outerRadius - dotRadius) / 2;
+  const baseCenterRadius = (blueRadius + outerRadius) / 2;
 
   for (let i = 0; i < dotCount; i++) {
     const angle = i * (360 / dotCount);
+    const radiusOffset = noiseWiggle(700 + i, 23, t);
+
+    const radius = baseCenterRadius + radiusOffset;
     ellipse(
-      cos(angle) * centerRadius,
-      sin(angle) * centerRadius,
+      cos(angle) * radius,
+      sin(angle) * radius,
       dotSize,
       dotSize
     );
@@ -380,6 +387,7 @@ function drawCircle4() {
 
 /**
  * ==================== CIRCLE #5: Red Petals - Ruby ====================
+ * INDIVIDUAL: Petals and blue dots float using Perlin noise.
  */
 function drawCircle5() {
   const s = 240;
@@ -395,14 +403,15 @@ function drawCircle5() {
   fill("#e53019");
   circle(0, 0, Math.round(s * 0.125));
 
-  // Draw 6 petals and decorative elements
+  // Draw 6 petals and decorative elements (animated)
   push();
   for (let i = 0; i < 6; i++) {
-    rotate(60);
+    const baseAngle = i * 60;
+    const angleOffset = noiseWiggle(800 + i, 35, t);
+
+    rotate(baseAngle + angleOffset);
     
     // Orange petal shape
-    // Petal defined using curveVertex for smooth shape
-    // 
     fill("#f1801b");
     beginShape();
     curveVertex(0, -0.05 * s); 
@@ -419,15 +428,18 @@ function drawCircle5() {
     curveVertex(0.001 * s, -0.08 * s);
     endShape(CLOSE);
 
-    // Blue decorative circle
+    // Blue decorative circle with vertical noise offset
     fill("#517ae1");
-    ellipse(-0.17 * s, -0.28 * s, s / 9.0, s / 9.0);
+    const yOffset = noiseWiggle(900 + i, 20, t);
+    ellipse(-0.17 * s, -0.28 * s + yOffset, s / 9.0, s / 9.0);
   }
   pop();
 }
 
 /**
  * ==================== CIRCLE #6: Orange Layers - Ruby ====================
+ * INDIVIDUAL: Orange ring dots get a small angular wiggle.
+ * (Inner random sparks are kept static here to avoid flicker.)
  */
 function drawCircle6() {
   const s = 260;
@@ -445,14 +457,16 @@ function drawCircle6() {
   fill("#3280ee");
   circle(0, 0, s * (2 / 3));
 
-  // Orange dots arranged in circle
+  // Orange dots arranged in circle (animated by noise)
   const dotCount = 20;
   const dotRadius = s * 0.43;
   const dotSize = s / 12;
   
   fill("#ed9b2c");
   for (let i = 0; i < dotCount; i++) {
-    const angle = i * (360 / dotCount) - 90;
+    const baseAngle = i * (360 / dotCount) - 90;
+    const angleOffset = noiseWiggle(1000 + i, 9, t);
+    const angle = baseAngle + angleOffset;
     const x = cos(angle) * dotRadius;
     const y = sin(angle) * dotRadius;
     ellipse(x, y, dotSize, dotSize);
@@ -462,7 +476,10 @@ function drawCircle6() {
   fill("#e7691f");
   circle(0, 0, s * 0.5);
 
-  // Red dots with randomness
+  // To keep the red sparks stable, we use a fixed random seed
+  randomSeed(1234);
+
+  // Red dots with randomness (now deterministic each frame)
   fill("#e54b1c");
   for (let i = 0; i < 6; i++) {
     const angle = -90 + (0.8 * 360) / (6 - 1) * i + random(-36, 36);
@@ -481,6 +498,7 @@ function drawCircle6() {
 
 /**
  * ==================== CIRCLE #7: Blue-Purple - Stannie ====================
+ * INDIVIDUAL: Purple radial petals sway using Perlin noise.
  */
 function drawCircle7() {
   // Outer black circle
@@ -499,33 +517,44 @@ function drawCircle7() {
   fill("#01A4F9");
   ellipse(0, 0, 120, 120);
 
-  // Purple radial petals
+  // Purple radial petals (animated)
   fill("#AF55AE");
   const petalCount = 24;
+  const baseLength = 140;
+  const baseOffset = 130;
   for (let i = 0; i < petalCount; i++) {
+    const baseAngle = (360 / petalCount) * i;
+    const angleOffset = noiseWiggle(1100 + i, 14, t);
+    const lengthOffset = noiseWiggle(1200 + i, 25, t);
+
     push();
-    rotate((360 / petalCount) * i);
-    ellipse(0, -130, 18, 140);
+    rotate(baseAngle + angleOffset);
+    ellipse(0, -baseOffset, 18, baseLength + lengthOffset);
     pop();
   }
 }
 
 /**
  * ==================== CIRCLE #8: Green Dots - Stannie ====================
+ * INDIVIDUAL: Green dots float inwards/outwards via noise.
  */
 function drawCircle8() {
   // Outer black circle
   fill(0);
   ellipse(0, 0, 500, 500);
 
-  // Green dots arranged around the circle
+  // Green dots arranged around the circle (animated radius)
   fill("#6B8E23");
   const dotCount = 16;
-  const dotRadius = 210;
+  const baseRadius = 210;
   for (let i = 0; i < dotCount; i++) {
+    const baseAngle = (360 / dotCount) * i;
+    const radiusOffset = noiseWiggle(1300 + i, 25, t);
+    const radius = baseRadius + radiusOffset;
+
     push();
-    rotate((360 / dotCount) * i);
-    ellipse(0, -dotRadius, 50, 50);
+    rotate(baseAngle);
+    ellipse(0, -radius, 50, 50);
     pop();
   }
 
