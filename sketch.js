@@ -1,7 +1,16 @@
 // ========================
 // 800x800 Canvas – CircleArt Version
 // ========================
-let cnv;
+let cnv, t = 0;  
+
+const NOISE = {
+  animate: true,
+  speed: 0.02,
+  wiggle: 24,
+  sMin: 0.85,
+  sMax: 1.15,
+  rotMax: 18
+};
 
 /**
  * Initialize the canvas and set up the drawing environment
@@ -9,7 +18,6 @@ let cnv;
 function setup() {
   cnv = createCanvas(800, 800);
   centerCanvas();
-  noLoop();
   angleMode(DEGREES);
 }
 
@@ -35,9 +43,9 @@ function windowResized() {
  * Main draw loop - clear the canvas and draw all elements
  */
 function draw() {
-  clear();
+  if (NOISE.animate) t += NOISE.speed;
   drawBackgroundGrid();  // Draw colored quadrants with random dots
-  drawAllCircles();      // Draw all circle compositions
+  drawAllCircles(t);      // Draw all circles using t as the parameter
 }
 
 /**
